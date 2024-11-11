@@ -48,10 +48,15 @@ impl JitoJsonRpcSDK {
         trace!("Sending request to: {}", url);
         trace!("Request body: {}", serde_json::to_string_pretty(&data).unwrap());
 
-        let response = self.client
+        let mut builder = self.client
             .post(&url)
-            .header("Content-Type", "application/json")
-            .json(&data)
+            .header("Content-Type", "application/json");
+
+        if let Some(uuid) = &self.uuid {
+            builder = builder.header("uuid", uuid);
+        }
+
+        let response = builder.json(&data)
             .send()
             .await?;
 
@@ -65,13 +70,8 @@ impl JitoJsonRpcSDK {
     }
 
     pub async fn get_tip_accounts(&self) -> Result<Value, reqwest::Error> {
-        let endpoint = if let Some(uuid) = &self.uuid {
-            format!("/bundles?uuid={}", uuid)
-        } else {
-            "/bundles".to_string()
-        };
-
-        self.send_request(&endpoint, "getTipAccounts", None).await
+        let endpoint = "/bundles";
+        self.send_request(endpoint, "getTipAccounts", None).await
     }
 
     // Get a random tip account
@@ -97,27 +97,19 @@ impl JitoJsonRpcSDK {
     }
 
     pub async fn get_bundle_statuses(&self, bundle_uuids: Vec<String>) -> Result<Value> {
-        let endpoint = if let Some(uuid) = &self.uuid {
-            format!("/bundles?uuid={}", uuid)
-        } else {
-            "/bundles".to_string()
-        };
+        let endpoint = "/bundles";
 
         // Construct the params as a list within a list
         let params = json!([bundle_uuids]);
 
-        self.send_request(&endpoint, "getBundleStatuses", Some(params))
+        self.send_request(endpoint, "getBundleStatuses", Some(params))
             .await
             .map_err(|e| anyhow!("Request error: {}", e))
     }
 
-    pub async fn send_bundle(&self, params: Option<Value>, uuid: Option<&str>) -> Result<Value, anyhow::Error> {
-        let mut endpoint = "/bundles".to_string();
+    pub async fn send_bundle(&self, params: Option<Value>) -> Result<Value, anyhow::Error> {
+        let endpoint = "/bundles";
         
-        if let Some(uuid) = uuid {
-            endpoint = format!("{}?uuid={}", endpoint, uuid);
-        }
-    
         // Ensure params is an array of transactions
         let transactions = match params {
             Some(Value::Array(transactions)) => {
@@ -136,17 +128,13 @@ impl JitoJsonRpcSDK {
         let params = json!([transactions]);
     
         // Send the wrapped transactions array
-        self.send_request(&endpoint, "sendBundle", Some(params))
+        self.send_request(endpoint, "sendBundle", Some(params))
             .await
             .map_err(|e| anyhow!("Request error: {}", e))
     }
 
     pub async fn send_txn(&self, params: Option<Value>, bundle_only: bool) -> Result<Value, reqwest::Error> {
         let mut query_params = Vec::new();
-
-        if let Some(uuid) = &self.uuid {
-            query_params.push(format!("uuid={}", uuid));
-        }
 
         if bundle_only {
             query_params.push("bundleOnly=true".to_string());
@@ -178,11 +166,7 @@ impl JitoJsonRpcSDK {
     }
 
     pub async fn get_in_flight_bundle_statuses(&self, bundle_uuids: Vec<String>) -> Result<Value> {
-        let endpoint = if let Some(uuid) = &self.uuid {
-            format!("/bundles?uuid={}", uuid)
-        } else {
-            "/bundles".to_string()
-        };
+        let endpoint = "/bundles";
 
         // Construct the params as a list within a list
         let params = json!([bundle_uuids]);

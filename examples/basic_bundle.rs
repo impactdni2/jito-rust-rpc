@@ -89,12 +89,9 @@ async fn main() -> Result<()> {
     // Prepare bundle for submission (array of transactions)
     let bundle = json!([serialized_tx]);
 
-    // UUID for the bundle
-    let uuid = None;
-
     // Send bundle using Jito SDK
      println!("Sending bundle with 1 transaction...");
-     let response = jito_sdk.send_bundle(Some(bundle), uuid).await?;
+     let response = jito_sdk.send_bundle(Some(bundle)).await?;
  
      // Extract bundle UUID from response
      let bundle_uuid = response["result"]
