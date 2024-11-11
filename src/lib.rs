@@ -1,5 +1,6 @@
 use reqwest::Client;
 use serde_json::{json, Value};
+use tracing::trace;
 use std::fmt;
 use anyhow::{anyhow, Result};
 use rand::seq::SliceRandom;
@@ -44,8 +45,8 @@ impl JitoJsonRpcSDK {
             "params": params.unwrap_or(json!([]))
         });
 
-        println!("Sending request to: {}", url);
-        println!("Request body: {}", serde_json::to_string_pretty(&data).unwrap());
+        trace!("Sending request to: {}", url);
+        trace!("Request body: {}", serde_json::to_string_pretty(&data).unwrap());
 
         let response = self.client
             .post(&url)
@@ -55,10 +56,10 @@ impl JitoJsonRpcSDK {
             .await?;
 
         let status = response.status();
-        println!("Response status: {}", status);
+        trace!("Response status: {}", status);
 
         let body = response.json::<Value>().await?;
-        println!("Response body: {}", serde_json::to_string_pretty(&body).unwrap());
+        trace!("Response body: {}", serde_json::to_string_pretty(&body).unwrap());
 
         Ok(body)
     }
@@ -142,6 +143,10 @@ impl JitoJsonRpcSDK {
 
     pub async fn send_txn(&self, params: Option<Value>, bundle_only: bool) -> Result<Value, reqwest::Error> {
         let mut query_params = Vec::new();
+
+        if let Some(uuid) = &self.uuid {
+            query_params.push(format!("uuid={}", uuid));
+        }
 
         if bundle_only {
             query_params.push("bundleOnly=true".to_string());
